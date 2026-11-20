@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>4-Stem Separator (Mobile)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #111;
+      color: #f5f5f5;
+    }
+    .box { max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.1rem; margin: 0 0 12px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+    }
+    .btn:disabled { background: #444; color: #999; }
+    .status { margin-top: 12px; font-size: 0.9rem; color: #cbd5e1; word-break: break-all; }
+    .stem {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #1e1e1e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stem a {
+      color: #60a5fa;
+      text-decoration: none;
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border: 1px solid #60a5fa;
+      border-radius: 6px;
+    }
+    .stem a.disabled { opacity: 0.3; pointer-events: none; }
+    #pc-block { display: none; text-align: center; padding-top: 40px; }
+  </style>
+</head>
+<body>
+  <div id="pc-block">
+    <h2>スマートフォン専用です</h2>
+    <p>このページはスマートフォンからのみご利用いただけます。</p>
+  </div>
+
+  <div class="box" id="app">
+    <h1>4パート音声分離（MP3 / WAV）</h1>
+    <input type="file" id="audioFile" accept=".mp3,.wav,audio/mpeg,audio/wav">
+    <button id="runBtn" class="btn" disabled>分離を実行</button>
+    <div id="status" class="status">MP3またはWAVファイルを選択してください。</div>
+
+    <div id="results">
+      <div class="stem"><span>① ボーカル</span><a id="dl-vocals" class="disabled" download="vocals.wav">WAV保存</a></div>
+      <div class="stem"><span>② ベース</span><a id="dl-bass" class="disabled" download="bass.wav">WAV保存</a></div>
+      <div class="stem"><span>③ ドラム</span><a id="dl-drums" class="disabled" download="drums.wav">WAV保存</a></div>
+      <div class="stem"><span>④ その他</span><a id="dl-other" class="disabled" download="other.wav">WAV保存</a></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
