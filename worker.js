@@ -1,6 +1,6 @@
 import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.mjs";
 
-const MODEL_URL_FP32 = "https://huggingface.co/jackjiangxinfa/demucs-onnx/resolve/main/model.onnx";
+const MODEL_URL_FP32 = "https://github.com/WING1209/Stem-Separation/releases/download/v1.0-fp16/model_fp16.onnx";
 const MODEL_URL_INT8 = "";
 const MODEL_URL = MODEL_URL_INT8 || MODEL_URL_FP32;
 
