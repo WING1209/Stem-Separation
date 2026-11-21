@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>≪WING≫ -Stem Separation-</title>
+  <title>【WING】 -Stem Separation-</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -94,6 +94,12 @@
       color: #f1f5f9;
       word-break: break-all;
     }
+    .note {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
     #results {
       margin-top: 14px;
       display: grid;
@@ -146,16 +152,17 @@
   </div>
 
   <div class="box" id="app">
-    <header class="app-title">【WING】 -Stem Separation-</header>
+    <header class="app-title">≪WING≫ -Stem Separation-</header>
 
     <label for="audioFile" class="file-label" id="fileLabel">
       <span>♫♪ 音源ファイルを選択 (タップ)</span>
-      <span class="file-sub" id="fileSub">対応形式: MP3 / WAV (44100Hz・ステレオ)</span>
+      <span class="file-sub" id="fileSub">対応形式: MP3 / WAV (44100Hz・ステレオ / 先頭30秒まで)</span>
     </label>
     <input type="file" id="audioFile" accept=".mp3, .wav, audio/mpeg, audio/wav">
 
     <button id="runBtn" class="btn" disabled>6 パート分離を実行</button>
     <div id="status" class="status">MP3 または WAVファイルを選択してください。</div>
+    <p class="note">※ iPhoneではメモリ制限のため、30秒を超える音源は先頭30秒のみ処理されます。実行前に他アプリや不要なタブを閉じると安定しやすくなります。</p>
 
     <div id="results">
       <div class="stem stem-drums"><span class="stem-name">① ドラム (Drums)</span><a id="dl-drums" class="disabled" download="drums.wav">WAV 保存</a></div>
