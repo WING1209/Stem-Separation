@@ -6,7 +6,11 @@ if (!isMobile) {
   throw new Error("Non-mobile access blocked");
 }
 
+const TARGET_SAMPLE_RATE = 44100;
+const STEM_KEYS = ["drums", "bass", "other", "vocals", "guitar", "piano"];
+
 const fileInput = document.getElementById("audioFile");
+const fileSub = document.getElementById("fileSub");
 const runBtn = document.getElementById("runBtn");
 const statusEl = document.getElementById("status");
 
@@ -21,38 +25,72 @@ function isAllowedAudio(file) {
   return nameOk || typeOk;
 }
 
+// ダウンロードリンクを初期状態（無効）に戻す
+function resetDownloadLinks() {
+  STEM_KEYS.forEach((k) => {
+    const link = document.getElementById(`dl-${k}`);
+    if (link) {
+      link.classList.add("disabled");
+      link.removeAttribute("href");
+    }
+  });
+}
+
 fileInput.addEventListener("change", (e) => {
   const file = e.target.files[0];
+  resetDownloadLinks();
+
   if (!isAllowedAudio(file)) {
     selectedFile = null;
     runBtn.disabled = true;
+    fileSub.textContent = "対応形式：MP3 / WAV（44100Hz・ステレオ）";
     statusEl.textContent = "エラー: MP3またはWAVファイルのみ対応しています。";
     return;
   }
+
   selectedFile = file;
   runBtn.disabled = false;
-  statusEl.textContent = `選択中: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+  const mb = (file.size / 1024 / 1024).toFixed(2);
+  fileSub.textContent = `${file.name} (${mb} MB)`;
+  statusEl.textContent = `選択完了: ${file.name} — 「6パート分離を実行」を押してください。`;
 });
 
 runBtn.addEventListener("click", async () => {
   if (!selectedFile) return;
   runBtn.disabled = true;
+  resetDownloadLinks();
   statusEl.textContent = "音声データを読み込み中...";
 
-  const arrayBuffer = await selectedFile.arrayBuffer();
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  try {
+    const arrayBuffer = await selectedFile.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-  // 左右チャンネル（モノラル時は複製）をFloat32ArrayとしてWorkerへ転送
-  const left = audioBuffer.getChannelData(0);
-  const right = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : new Float32Array(left);
+    if (audioBuffer.sampleRate !== TARGET_SAMPLE_RATE) {
+      statusEl.textContent = "サンプリングレートがちがいます";
+      runBtn.disabled = false;
+      return;
+    }
 
-  statusEl.textContent = "バックグラウンドで分離処理中...";
-  worker.postMessage({
-    sampleRate: audioBuffer.sampleRate,
-    left,
-    right
-  }, [left.buffer, right.buffer]);
+    if (audioBuffer.numberOfChannels < 2) {
+      statusEl.textContent = "エラー: ステレオ（2ch）音源のみ対応しています。";
+      runBtn.disabled = false;
+      return;
+    }
+
+    const left = audioBuffer.getChannelData(0);
+    const right = audioBuffer.getChannelData(1);
+
+    statusEl.textContent = "バックグラウンドで6パート分離中...";
+    worker.postMessage({
+      sampleRate: audioBuffer.sampleRate,
+      left,
+      right
+    }, [left.buffer, right.buffer]);
+  } catch (err) {
+    statusEl.textContent = `読み込みエラー: ${err.message}`;
+    runBtn.disabled = false;
+  }
 });
 
 // Float32Array(ステレオ2ch) を WAV Blob に変換
@@ -71,7 +109,7 @@ function encodeWav(chL, chR, sampleRate) {
   writeStr(8, "WAVE");
   writeStr(12, "fmt ");
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM
+  view.setUint16(20, 1, true);
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
   view.setUint32(28, sampleRate * numChannels * 2, true);
@@ -96,14 +134,15 @@ worker.onmessage = (e) => {
   if (type === "progress") {
     statusEl.textContent = message;
   } else if (type === "done") {
-    const keys = ["vocals", "bass", "drums", "other"];
-    keys.forEach((k) => {
+    STEM_KEYS.forEach((k) => {
       const link = document.getElementById(`dl-${k}`);
-      const blob = encodeWav(stems[k].left, stems[k].right, sampleRate);
-      link.href = URL.createObjectURL(blob);
-      link.classList.remove("disabled");
+      if (link && stems[k]) {
+        const blob = encodeWav(stems[k].left, stems[k].right, sampleRate);
+        link.href = URL.createObjectURL(blob);
+        link.classList.remove("disabled");
+      }
     });
-    statusEl.textContent = "完了！各パートのWAVを保存できます。";
+    statusEl.textContent = "完了！6パートそれぞれのWAVを保存できます。";
     runBtn.disabled = false;
   }
 };
