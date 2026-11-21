@@ -2,23 +2,41 @@ import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.
 
 const MODEL_URL = "https://huggingface.co/jackjiangxinfa/demucs-onnx/resolve/main/model.onnx";
 
-// モデルが要求する入力サンプル数（343980）
+// モデルが要求する入力サンプル数 (343980)
 const CHUNK_SIZE = 343980;
 const INPUT_NAME = "input";
 const OUTPUT_NAME = "output";
 
-// 6パートの並び順（標準的な6ステム構成: drums, bass, other, vocals, guitar, piano）
+// 6 パートの並び順 (drums, bass, other, vocals, guitar, piano)
 const STEM_KEYS = ["drums", "bass", "other", "vocals", "guitar", "piano"];
+
+// iOS のメモリ制限対策: スレッド数とメモリ事前確保を抑制
+ort.env.wasm.numThreads = 1;
+ort.env.wasm.proxy = false;
 
 let session = null;
 
 async function initModel() {
   if (session) return session;
-  postMessage({ type: "progress", message: "AIモデル（約304MB）を読み込み中..." });
+  postMessage({ type: "progress", message: "AI モデル (約304MB) を読み込み中..." });
 
-  session = await ort.InferenceSession.create(MODEL_URL, {
-    executionProviders: ["wasm"]
-  });
+  const response = await fetch(MODEL_URL);
+  if (!response.ok) {
+    throw new Error(`モデルの取得に失敗しました (HTTP ${response.status})`);
+  }
+
+  let modelBuffer = await response.arrayBuffer();
+
+  try {
+    session = await ort.InferenceSession.create(modelBuffer, {
+      executionProviders: ["wasm"],
+      enableCpuMemArena: false,
+      enableMemPattern: false
+    });
+  } finally {
+    modelBuffer = null;
+  }
+
   return session;
 }
 
@@ -54,9 +72,8 @@ self.onmessage = async (e) => {
     for (let start = 0; start < totalLength; start += CHUNK_SIZE) {
       const end = Math.min(start + CHUNK_SIZE, totalLength);
       const currentLen = end - start;
-
       const pct = Math.floor((start / totalLength) * 100);
-      postMessage({ type: "progress", message: `6パート分離を計算中... (${pct}%)` });
+      postMessage({ type: "progress", message: `6 パート分離を計算中... (${pct}%)` });
 
       const inputData = new Float32Array(2 * CHUNK_SIZE);
       for (let i = 0; i < currentLen; i++) {
@@ -67,9 +84,10 @@ self.onmessage = async (e) => {
       const inputTensor = new ort.Tensor("float32", inputData, [1, 2, CHUNK_SIZE]);
       const feeds = { [inputName]: inputTensor };
       const results = await model.run(feeds, [outputName]);
-
       const outTensor = results[outputName];
+
       if (!outTensor) {
+        inputTensor.dispose();
         throw new Error(`出力 "${outputName}" が取得できませんでした`);
       }
 
@@ -87,7 +105,6 @@ self.onmessage = async (e) => {
         const key = STEM_KEYS[s];
         const baseL = s * stemStride;
         const baseR = numChannels > 1 ? baseL + chStride : baseL;
-
         for (let i = 0; i < copyLen; i++) {
           stems[key].left[start + i] = data[baseL + i];
           stems[key].right[start + i] = data[baseR + i];
@@ -103,7 +120,7 @@ self.onmessage = async (e) => {
       clampBuffer(stems[key].right);
     }
 
-    postMessage({ type: "progress", message: "6パート分のWAVファイルを生成中..." });
+    postMessage({ type: "progress", message: "6 パート分のWAVファイルを生成中..." });
 
     const transferBuffers = [];
     for (const key of STEM_KEYS) {
@@ -120,7 +137,7 @@ self.onmessage = async (e) => {
     );
   } catch (err) {
     postMessage({
-      type: "progress",
+      type: "error",
       message: `推論エラー: ${err.message}`
     });
   }
