@@ -1,7 +1,8 @@
 import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.mjs";
 
+// GitHub Release にアップした model_int8.onnx のURLに書き換えてください
 const MODEL_URL =
-  "https://github.com/WING1209/Stem-Separation/releases/download/v1.0-fp16/model_fp16.onnx";
+  "https://github.com/WING1209/Stem-Separation/releases/download/v1.0-int8/model_int8.onnx";
 
 // モデルが要求する入力サンプル数 (343980)
 const CHUNK_SIZE = 343980;
@@ -17,20 +18,18 @@ let session = null;
 async function initModel() {
   if (session) return session;
 
-  postMessage({ type: "progress", message: "AIモデルをダウンロード中..." });
+  postMessage({ type: "progress", message: "① AIモデルをダウンロード中..." });
   const response = await fetch(MODEL_URL);
   if (!response.ok) {
-    throw new Error(`モデルの取得に失敗しました (HTTP ${response.status})`);
+    throw new Error(`ダウンロード失敗 (HTTP ${response.status})`);
   }
 
-  postMessage({ type: "progress", message: "モデルデータをメモリへ展開中..." });
+  postMessage({ type: "progress", message: "② ArrayBufferへ変換中..." });
   const buffer = await response.arrayBuffer();
   let modelBytes = new Uint8Array(buffer);
 
-  postMessage({
-    type: "progress",
-    message: `AIセッションを初期化中... (${(modelBytes.byteLength / 1024 / 1024).toFixed(1)} MB)`
-  });
+  const mb = (modelBytes.byteLength / 1024 / 1024).toFixed(1);
+  postMessage({ type: "progress", message: `③ ONNXセッション生成中... (${mb} MB)` });
 
   try {
     session = await ort.InferenceSession.create(modelBytes, {
@@ -39,11 +38,13 @@ async function initModel() {
       enableCpuMemArena: false,
       enableMemPattern: false
     });
+  } catch (e) {
+    throw new Error(`Session作成失敗 (${mb}MB): ${e.message || e}`);
   } finally {
     modelBytes = null;
   }
 
-  postMessage({ type: "progress", message: "AIモデルの準備が完了しました!" });
+  postMessage({ type: "progress", message: "④ AIモデルの準備が完了しました!" });
   return session;
 }
 
