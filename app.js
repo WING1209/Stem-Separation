@@ -7,6 +7,8 @@ if (!isMobile) {
 }
 
 const TARGET_SAMPLE_RATE = 44100;
+const MAX_SECONDS = 30; // iPhoneのメモリ上限対策: 最大30秒まで処理
+const MAX_SAMPLES = TARGET_SAMPLE_RATE * MAX_SECONDS;
 const STEM_KEYS = ["drums", "bass", "other", "vocals", "guitar", "piano"];
 
 const fileInput = document.getElementById("audioFile");
@@ -41,36 +43,36 @@ function resetDownloadLinks() {
   });
 }
 
-// 任意のデコード済み AudioBuffer を 44100Hz 2ch (ステレオ) へ自動変換
+// 任意のデコード済み AudioBuffer を 44100Hz 2ch (ステレオ / 最大30秒) へ自動変換
 async function normalizeTo44100Stereo(decodedBuffer) {
   const numChannels = decodedBuffer.numberOfChannels;
   if (numChannels < 1) {
     throw new Error("有効な音声チャンネルが見つかりませんでした。");
   }
 
-  const needsResample = decodedBuffer.sampleRate !== TARGET_SAMPLE_RATE;
-  const needsChannelConvert = numChannels !== 2;
+  const clampedDuration = Math.min(decodedBuffer.duration, MAX_SECONDS);
+  const targetLength = Math.min(Math.ceil(clampedDuration * TARGET_SAMPLE_RATE), MAX_SAMPLES);
+  const sourceLength = Math.min(
+    decodedBuffer.length,
+    Math.ceil(clampedDuration * decodedBuffer.sampleRate)
+  );
 
-  if (!needsResample && !needsChannelConvert) {
-    return decodedBuffer;
-  }
-
-  const targetLength = Math.ceil(decodedBuffer.duration * TARGET_SAMPLE_RATE);
   const offlineCtx = new OfflineAudioContext(2, targetLength, TARGET_SAMPLE_RATE);
-
   const inputForRender = offlineCtx.createBuffer(
     Math.min(numChannels, 2),
-    decodedBuffer.length,
+    sourceLength,
     decodedBuffer.sampleRate
   );
 
   if (numChannels === 1) {
-    const mono = decodedBuffer.getChannelData(0);
+    const mono = decodedBuffer.getChannelData(0).subarray(0, sourceLength);
     inputForRender.copyToChannel(mono, 0);
     inputForRender.copyToChannel(mono, 1);
   } else {
-    inputForRender.copyToChannel(decodedBuffer.getChannelData(0), 0);
-    inputForRender.copyToChannel(decodedBuffer.getChannelData(1), 1);
+    const ch0 = decodedBuffer.getChannelData(0).subarray(0, sourceLength);
+    const ch1 = decodedBuffer.getChannelData(1).subarray(0, sourceLength);
+    inputForRender.copyToChannel(ch0, 0);
+    inputForRender.copyToChannel(ch1, 1);
   }
 
   const source = offlineCtx.createBufferSource();
@@ -88,7 +90,7 @@ fileInput.addEventListener("change", (e) => {
   if (!isAllowedAudio(file)) {
     selectedFile = null;
     runBtn.disabled = true;
-    fileSub.textContent = "対応形式: MP3 / WAV (44100Hz・ステレオ)";
+    fileSub.textContent = "対応形式: MP3 / WAV (44100Hz・ステレオ / 先頭30秒まで)";
     statusEl.textContent = "エラー: MP3 または WAVファイルのみ対応しています。";
     return;
   }
@@ -120,10 +122,16 @@ runBtn.addEventListener("click", async () => {
       }
     }
 
+    const wasTrimmed = audioBuffer.duration > MAX_SECONDS;
     const needsConvert =
-      audioBuffer.sampleRate !== TARGET_SAMPLE_RATE || audioBuffer.numberOfChannels !== 2;
+      audioBuffer.sampleRate !== TARGET_SAMPLE_RATE ||
+      audioBuffer.numberOfChannels !== 2 ||
+      wasTrimmed;
+
     if (needsConvert) {
-      statusEl.textContent = `44100Hz・ステレオに変換中... (元: ${audioBuffer.sampleRate}Hz / ${audioBuffer.numberOfChannels}ch)`;
+      statusEl.textContent = wasTrimmed
+        ? `30秒までに制限し44100Hz・ステレオに変換中... (元: ${audioBuffer.duration.toFixed(1)}秒 / ${audioBuffer.sampleRate}Hz)`
+        : `44100Hz・ステレオに変換中... (元: ${audioBuffer.sampleRate}Hz / ${audioBuffer.numberOfChannels}ch)`;
     }
 
     let normalizedBuffer = await normalizeTo44100Stereo(audioBuffer);
@@ -188,19 +196,23 @@ function encodeWav(chL, chR, sampleRate) {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
-worker.onmessage = (e) => {
+worker.onmessage = async (e) => {
   const { type, message, stems, sampleRate } = e.data;
   if (type === "progress") {
     statusEl.textContent = message;
   } else if (type === "done") {
-    STEM_KEYS.forEach((k) => {
+    for (let i = 0; i < STEM_KEYS.length; i++) {
+      const k = STEM_KEYS[i];
       const link = document.getElementById(`dl-${k}`);
       if (link && stems[k]) {
+        statusEl.textContent = `WAVファイルを生成中... (${i + 1}/${STEM_KEYS.length})`;
         const blob = encodeWav(stems[k].left, stems[k].right, sampleRate);
         link.href = URL.createObjectURL(blob);
         link.classList.remove("disabled");
+        stems[k] = null;
+        await new Promise((r) => setTimeout(r, 0));
       }
-    });
+    }
     statusEl.textContent = "完了! 6パートそれぞれのWAVを保存できます。";
     runBtn.disabled = false;
   } else if (type === "error") {
