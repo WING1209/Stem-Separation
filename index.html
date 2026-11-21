@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>『WING』-Stem Separation-</title>
+  <title>【WING】 -Stem Separation-</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -50,8 +50,8 @@
       transition: transform 0.12s ease, background 0.15s ease;
     }
     .file-label:active {
-      transform: scale(0.98);
       background: rgba(56, 189, 248, 0.22);
+      transform: scale(0.98);
     }
     .file-sub {
       font-size: 0.8rem;
@@ -114,11 +114,10 @@
     }
     .stem-drums  { border-left-color: #f97316; }
     .stem-bass   { border-left-color: #eab308; }
-    .stem-other  { border-left-color: #a855f7; }
-    .stem-vocals { border-left-color: #ec4899; }
+    .stem-other  { border-left-color: #ec4899; }
+    .stem-vocals { border-left-color: #06b6d4; }
     .stem-guitar { border-left-color: #22c55e; }
-    .stem-piano  { border-left-color: #06b6d4; }
-
+    .stem-piano  { border-left-color: #a855f7; }
     .stem a {
       color: #ffffff;
       background: linear-gradient(90deg, #6366f1, #ec4899);
@@ -147,27 +146,27 @@
   </div>
 
   <div class="box" id="app">
-    <header class="app-title">【WING】-Stem Separation-</header>
+    <header class="app-title">【WING】 -Stem Separation-</header>
 
     <label for="audioFile" class="file-label" id="fileLabel">
-      <span>🎵 音源ファイルを選択（タップ）</span>
-      <span class="file-sub" id="fileSub">対応形式：MP3 / WAV（44100Hz・ステレオ）</span>
+      <span>♫♪ 音源ファイルを選択 (タップ)</span>
+      <span class="file-sub" id="fileSub">対応形式: MP3 / WAV (44100Hz・ステレオ)</span>
     </label>
-    <input type="file" id="audioFile" accept=".mp3,.wav,audio/mpeg,audio/wav">
+    <input type="file" id="audioFile" accept=".mp3, .wav, audio/mpeg, audio/wav">
 
-    <button id="runBtn" class="btn" disabled>6パート分離を実行</button>
-    <div id="status" class="status">MP3またはWAVファイルを選択してください。</div>
+    <button id="runBtn" class="btn" disabled>6 パート分離を実行</button>
+    <div id="status" class="status">MP3 または WAVファイルを選択してください。</div>
 
     <div id="results">
-      <div class="stem stem-drums"><span class="stem-name">① ドラム (Drums)</span><a id="dl-drums" class="disabled" download="drums.wav">WAV保存</a></div>
-      <div class="stem stem-bass"><span class="stem-name">② ベース (Bass)</span><a id="dl-bass" class="disabled" download="bass.wav">WAV保存</a></div>
-      <div class="stem stem-other"><span class="stem-name">③ その他 (Other)</span><a id="dl-other" class="disabled" download="other.wav">WAV保存</a></div>
-      <div class="stem stem-vocals"><span class="stem-name">④ ボーカル (Vocals)</span><a id="dl-vocals" class="disabled" download="vocals.wav">WAV保存</a></div>
-      <div class="stem stem-guitar"><span class="stem-name">⑤ ギター (Guitar)</span><a id="dl-guitar" class="disabled" download="guitar.wav">WAV保存</a></div>
-      <div class="stem stem-piano"><span class="stem-name">⑥ ピアノ (Piano)</span><a id="dl-piano" class="disabled" download="piano.wav">WAV保存</a></div>
+      <div class="stem stem-drums"><span class="stem-name">① ドラム (Drums)</span><a id="dl-drums" class="disabled" download="drums.wav">WAV 保存</a></div>
+      <div class="stem stem-bass"><span class="stem-name">② ベース (Bass)</span><a id="dl-bass" class="disabled" download="bass.wav">WAV 保存</a></div>
+      <div class="stem stem-other"><span class="stem-name">③ その他 (Other)</span><a id="dl-other" class="disabled" download="other.wav">WAV 保存</a></div>
+      <div class="stem stem-vocals"><span class="stem-name">④ ボーカル (Vocals)</span><a id="dl-vocals" class="disabled" download="vocals.wav">WAV 保存</a></div>
+      <div class="stem stem-guitar"><span class="stem-name">⑤ ギター (Guitar)</span><a id="dl-guitar" class="disabled" download="guitar.wav">WAV 保存</a></div>
+      <div class="stem stem-piano"><span class="stem-name">⑥ ピアノ (Piano)</span><a id="dl-piano" class="disabled" download="piano.wav">WAV 保存</a></div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
