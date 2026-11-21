@@ -2,10 +2,13 @@ import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.
 
 const MODEL_URL = "https://huggingface.co/jackjiangxinfa/demucs-onnx/resolve/main/model.onnx";
 
-// モデルが要求する正確な入力サンプル数（343980）
+// モデルが要求する入力サンプル数（343980）
 const CHUNK_SIZE = 343980;
 const INPUT_NAME = "input";
 const OUTPUT_NAME = "output";
+
+// 6パートの並び順（標準的な6ステム構成: drums, bass, other, vocals, guitar, piano）
+const STEM_KEYS = ["drums", "bass", "other", "vocals", "guitar", "piano"];
 
 let session = null;
 
@@ -20,9 +23,8 @@ async function initModel() {
 }
 
 function createStemBuffers(totalLength) {
-  const keys = ["vocals", "bass", "drums", "other"];
   const result = {};
-  for (const k of keys) {
+  for (const k of STEM_KEYS) {
     result[k] = {
       left: new Float32Array(totalLength),
       right: new Float32Array(totalLength)
@@ -54,9 +56,8 @@ self.onmessage = async (e) => {
       const currentLen = end - start;
 
       const pct = Math.floor((start / totalLength) * 100);
-      postMessage({ type: "progress", message: `4パート分離を計算中... (${pct}%)` });
+      postMessage({ type: "progress", message: `6パート分離を計算中... (${pct}%)` });
 
-      // [1, 2, 343980] 入力テンソル作成（末尾は0埋め）
       const inputData = new Float32Array(2 * CHUNK_SIZE);
       for (let i = 0; i < currentLen; i++) {
         inputData[i] = left[start + i];
@@ -72,7 +73,6 @@ self.onmessage = async (e) => {
         throw new Error(`出力 "${outputName}" が取得できませんでした`);
       }
 
-      // 出力形状の解釈（例: [1, 6, 2, 343980] または [6, 2, 343980]）
       const dims = outTensor.dims;
       const numSamples = dims[dims.length - 1] || CHUNK_SIZE;
       const numChannels = dims[dims.length - 2] || 2;
@@ -83,29 +83,14 @@ self.onmessage = async (e) => {
       const stemStride = numChannels * chStride;
       const data = outTensor.data;
 
-      // 6ステム標準順 [0: drums, 1: bass, 2: other, 3: vocals, 4: guitar, 5: piano] を想定
-      // vocals / bass / drums 以外はすべて「④その他（stems.other）」に加算
-      for (let s = 0; s < numStems; s++) {
+      for (let s = 0; s < Math.min(numStems, STEM_KEYS.length); s++) {
+        const key = STEM_KEYS[s];
         const baseL = s * stemStride;
         const baseR = numChannels > 1 ? baseL + chStride : baseL;
 
-        let target = stems.other;
-        if (numStems >= 6) {
-          if (s === 0) target = stems.drums;
-          else if (s === 1) target = stems.bass;
-          else if (s === 3) target = stems.vocals;
-          else target = stems.other; // 2:other, 4:guitar, 5:piano
-        } else if (numStems === 4) {
-          // 4ステム順 [0: drums, 1: bass, 2: other, 3: vocals] を想定
-          if (s === 0) target = stems.drums;
-          else if (s === 1) target = stems.bass;
-          else if (s === 3) target = stems.vocals;
-          else target = stems.other;
-        }
-
         for (let i = 0; i < copyLen; i++) {
-          target.left[start + i] += data[baseL + i];
-          target.right[start + i] += data[baseR + i];
+          stems[key].left[start + i] = data[baseL + i];
+          stems[key].right[start + i] = data[baseR + i];
         }
       }
 
@@ -113,12 +98,17 @@ self.onmessage = async (e) => {
       outTensor.dispose();
     }
 
-    for (const key of ["vocals", "bass", "drums", "other"]) {
+    for (const key of STEM_KEYS) {
       clampBuffer(stems[key].left);
       clampBuffer(stems[key].right);
     }
 
-    postMessage({ type: "progress", message: "WAVファイルを生成中..." });
+    postMessage({ type: "progress", message: "6パート分のWAVファイルを生成中..." });
+
+    const transferBuffers = [];
+    for (const key of STEM_KEYS) {
+      transferBuffers.push(stems[key].left.buffer, stems[key].right.buffer);
+    }
 
     postMessage(
       {
@@ -126,12 +116,7 @@ self.onmessage = async (e) => {
         sampleRate,
         stems
       },
-      [
-        stems.vocals.left.buffer, stems.vocals.right.buffer,
-        stems.bass.left.buffer,   stems.bass.right.buffer,
-        stems.drums.left.buffer,  stems.drums.right.buffer,
-        stems.other.left.buffer,  stems.other.right.buffer
-      ]
+      transferBuffers
     );
   } catch (err) {
     postMessage({
