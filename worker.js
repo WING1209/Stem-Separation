@@ -1,9 +1,9 @@
 import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.mjs";
 
-const MODEL_URL_FP32 = "https://github.com/WING1209/Stem-Separation/releases/download/v1.0-fp16/model_fp16.onnx";
-const MODEL_URL_INT8 = "";
-const MODEL_URL = MODEL_URL_INT8 || MODEL_URL_FP32;
+const MODEL_URL =
+  "https://github.com/WING1209/Stem-Separation/releases/download/v1.0-fp16/model_fp16.onnx";
 
+// モデルが要求する入力サンプル数 (343980)
 const CHUNK_SIZE = 343980;
 const INPUT_NAME = "input";
 const OUTPUT_NAME = "output";
@@ -16,31 +16,34 @@ let session = null;
 
 async function initModel() {
   if (session) return session;
-  postMessage({ type: "progress", message: "Worker: モデルfetch開始..." });
 
+  postMessage({ type: "progress", message: "AIモデルをダウンロード中..." });
   const response = await fetch(MODEL_URL);
   if (!response.ok) {
     throw new Error(`モデルの取得に失敗しました (HTTP ${response.status})`);
   }
-  postMessage({ type: "progress", message: "Worker: fetch応答OK、ArrayBuffer取得中..." });
 
-  let modelBuffer = await response.arrayBuffer();
+  postMessage({ type: "progress", message: "モデルデータをメモリへ展開中..." });
+  const buffer = await response.arrayBuffer();
+  let modelBytes = new Uint8Array(buffer);
+
   postMessage({
     type: "progress",
-    message: `Worker: モデルDL完了 (${(modelBuffer.byteLength / 1024 / 1024).toFixed(1)} MB) -> セッション生成中...`
+    message: `AIセッションを初期化中... (${(modelBytes.byteLength / 1024 / 1024).toFixed(1)} MB)`
   });
 
   try {
-    session = await ort.InferenceSession.create(modelBuffer, {
+    session = await ort.InferenceSession.create(modelBytes, {
       executionProviders: ["wasm"],
+      graphOptimizationLevel: "disabled",
       enableCpuMemArena: false,
       enableMemPattern: false
     });
-    postMessage({ type: "progress", message: "Worker: AIセッション生成完了!" });
   } finally {
-    modelBuffer = null;
+    modelBytes = null;
   }
 
+  postMessage({ type: "progress", message: "AIモデルの準備が完了しました!" });
   return session;
 }
 
@@ -67,8 +70,12 @@ self.onmessage = async (e) => {
     const { sampleRate, left, right } = e.data;
     const model = await initModel();
 
-    const inputName = model.inputNames.includes(INPUT_NAME) ? INPUT_NAME : model.inputNames[0];
-    const outputName = model.outputNames.includes(OUTPUT_NAME) ? OUTPUT_NAME : model.outputNames[0];
+    const inputName = model.inputNames.includes(INPUT_NAME)
+      ? INPUT_NAME
+      : model.inputNames[0];
+    const outputName = model.outputNames.includes(OUTPUT_NAME)
+      ? OUTPUT_NAME
+      : model.outputNames[0];
 
     const totalLength = left.length;
     const stems = createStemBuffers(totalLength);
@@ -77,7 +84,11 @@ self.onmessage = async (e) => {
       const end = Math.min(start + CHUNK_SIZE, totalLength);
       const currentLen = end - start;
       const pct = Math.floor((start / totalLength) * 100);
-      postMessage({ type: "progress", message: `6 パート分離を計算中... (${pct}%)` });
+
+      postMessage({
+        type: "progress",
+        message: `6 パート分離を計算中... (${pct}%)`
+      });
 
       const inputData = new Float32Array(2 * CHUNK_SIZE);
       for (let i = 0; i < currentLen; i++) {
@@ -98,7 +109,8 @@ self.onmessage = async (e) => {
       const dims = outTensor.dims;
       const numSamples = dims[dims.length - 1] || CHUNK_SIZE;
       const numChannels = dims[dims.length - 2] || 2;
-      const numStems = dims.length >= 4 ? dims[1] : (dims.length === 3 ? dims[0] : 1);
+      const numStems =
+        dims.length >= 4 ? dims[1] : dims.length === 3 ? dims[0] : 1;
 
       const copyLen = Math.min(currentLen, numSamples);
       const chStride = numSamples;
@@ -131,14 +143,7 @@ self.onmessage = async (e) => {
       transferBuffers.push(stems[key].left.buffer, stems[key].right.buffer);
     }
 
-    postMessage(
-      {
-        type: "done",
-        sampleRate,
-        stems
-      },
-      transferBuffers
-    );
+    postMessage({ type: "done", sampleRate, stems }, transferBuffers);
   } catch (err) {
     postMessage({
       type: "error",
