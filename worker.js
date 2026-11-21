@@ -1,6 +1,9 @@
 import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.mjs";
 
-const MODEL_URL = "https://huggingface.co/jackjiangxinfa/demucs-onnx/resolve/main/model.onnx";
+// 通常モデル (約304MB) と 量子化モデル (用意できた場合はこちらにURLを設定)
+const MODEL_URL_FP32 = "https://huggingface.co/jackjiangxinfa/demucs-onnx/resolve/main/model.onnx";
+const MODEL_URL_INT8 = ""; // 例: "https://huggingface.co/あなたのアカウント/リポジトリ/resolve/main/model_int8.onnx"
+const MODEL_URL = MODEL_URL_INT8 || MODEL_URL_FP32;
 
 // モデルが要求する入力サンプル数 (343980)
 const CHUNK_SIZE = 343980;
@@ -18,7 +21,8 @@ let session = null;
 
 async function initModel() {
   if (session) return session;
-  postMessage({ type: "progress", message: "AI モデル (約304MB) を読み込み中..." });
+  const label = MODEL_URL_INT8 ? "量子化AIモデル" : "AI モデル (約304MB)";
+  postMessage({ type: "progress", message: `${label} を読み込み中...` });
 
   const response = await fetch(MODEL_URL);
   if (!response.ok) {
@@ -120,7 +124,7 @@ self.onmessage = async (e) => {
       clampBuffer(stems[key].right);
     }
 
-    postMessage({ type: "progress", message: "6 パート分のWAVファイルを生成中..." });
+    postMessage({ type: "progress", message: "6 パート分のWAVデータを転送中..." });
 
     const transferBuffers = [];
     for (const key of STEM_KEYS) {
