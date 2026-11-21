@@ -1,4 +1,4 @@
-// スマホ判定（簡易チェック）
+// スマホ判定 (簡易チェック)
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && window.innerWidth <= 900;
 if (!isMobile) {
   document.getElementById("app").style.display = "none";
@@ -7,7 +7,7 @@ if (!isMobile) {
 }
 
 const TARGET_SAMPLE_RATE = 44100;
-const STEM_KEYS = ["drums", "bass", "other", "vocals", "guitar", "piano"];
+const STEM_KEYS = ["vocals", "instrumental"];
 
 const fileInput = document.getElementById("audioFile");
 const fileSub = document.getElementById("fileSub");
@@ -25,7 +25,7 @@ function isAllowedAudio(file) {
   return nameOk || typeOk;
 }
 
-// ダウンロードリンクを初期状態（無効）に戻し、既存の ObjectURL を解放
+// ダウンロードリンクを初期状態(無効)に戻し、既存の ObjectURL を解放
 function resetDownloadLinks() {
   STEM_KEYS.forEach((k) => {
     const link = document.getElementById(`dl-${k}`);
@@ -39,7 +39,7 @@ function resetDownloadLinks() {
   });
 }
 
-// 任意のデコード済み AudioBuffer を 44100Hz・2ch（ステレオ）へ自動変換
+// 任意のデコード済み AudioBuffer を 44100Hz 2ch (ステレオ) へ自動変換
 async function normalizeTo44100Stereo(decodedBuffer) {
   const numChannels = decodedBuffer.numberOfChannels;
   if (numChannels < 1) {
@@ -49,16 +49,14 @@ async function normalizeTo44100Stereo(decodedBuffer) {
   const needsResample = decodedBuffer.sampleRate !== TARGET_SAMPLE_RATE;
   const needsChannelConvert = numChannels !== 2;
 
-  // すでに 44100Hz・2ch の場合はそのまま返す
   if (!needsResample && !needsChannelConvert) {
     return decodedBuffer;
   }
 
   const targetLength = Math.ceil(decodedBuffer.duration * TARGET_SAMPLE_RATE);
   const offlineCtx = new OfflineAudioContext(2, targetLength, TARGET_SAMPLE_RATE);
-
   const inputForRender = offlineCtx.createBuffer(
-    Math.min(numChannels, 2),
+    2,
     decodedBuffer.length,
     decodedBuffer.sampleRate
   );
@@ -87,8 +85,8 @@ fileInput.addEventListener("change", (e) => {
   if (!isAllowedAudio(file)) {
     selectedFile = null;
     runBtn.disabled = true;
-    fileSub.textContent = "対応形式：MP3 / WAV（44100Hz・ステレオへ自動変換）";
-    statusEl.textContent = "エラー: MP3またはWAVファイルのみ対応しています。";
+    fileSub.textContent = "対応形式: MP3 / WAV (44100Hz・ステレオへ自動変換)";
+    statusEl.textContent = "エラー: MP3 または WAVファイルのみ対応しています。";
     return;
   }
 
@@ -96,23 +94,25 @@ fileInput.addEventListener("change", (e) => {
   runBtn.disabled = false;
   const mb = (file.size / 1024 / 1024).toFixed(2);
   fileSub.textContent = `${file.name} (${mb} MB)`;
-  statusEl.textContent = `選択完了: ${file.name} — 「6パート分離を実行」を押してください。`;
+  statusEl.textContent = `選択完了: ${file.name} - 「2パート分離を実行」を押してください。`;
 });
 
 runBtn.addEventListener("click", async () => {
   if (!selectedFile) return;
+
   runBtn.disabled = true;
   resetDownloadLinks();
   statusEl.textContent = "音声データを読み込み中...";
 
   try {
-    const arrayBuffer = await selectedFile.arrayBuffer();
+    let arrayBuffer = await selectedFile.arrayBuffer();
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
     let audioBuffer;
+
     try {
       audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
     } finally {
+      arrayBuffer = null;
       if (typeof audioCtx.close === "function") {
         await audioCtx.close().catch(() => {});
       }
@@ -120,17 +120,22 @@ runBtn.addEventListener("click", async () => {
 
     const needsConvert = audioBuffer.sampleRate !== TARGET_SAMPLE_RATE || audioBuffer.numberOfChannels !== 2;
     if (needsConvert) {
-      statusEl.textContent = `44100Hz・ステレオに変換中...（元: ${audioBuffer.sampleRate}Hz / ${audioBuffer.numberOfChannels}ch）`;
+      statusEl.textContent = `44100Hz・ステレオに変換中... (元: ${audioBuffer.sampleRate}Hz / ${audioBuffer.numberOfChannels}ch)`;
     }
 
-    const normalizedBuffer = await normalizeTo44100Stereo(audioBuffer);
-    const left = normalizedBuffer.getChannelData(0);
-    const right = normalizedBuffer.getChannelData(1);
+    let normalizedBuffer = await normalizeTo44100Stereo(audioBuffer);
+    audioBuffer = null;
 
-    statusEl.textContent = "バックグラウンドで6パート分離中...";
+    const left = new Float32Array(normalizedBuffer.getChannelData(0));
+    const right = new Float32Array(normalizedBuffer.getChannelData(1));
+    const sr = normalizedBuffer.sampleRate;
+    normalizedBuffer = null;
+
+    statusEl.textContent = "バックグラウンドで2パート分離中...";
+
     worker.postMessage(
       {
-        sampleRate: normalizedBuffer.sampleRate,
+        sampleRate: sr,
         left,
         right
       },
@@ -142,7 +147,7 @@ runBtn.addEventListener("click", async () => {
   }
 });
 
-// Float32Array(ステレオ2ch) を WAV Blob に変換
+// Float32Array (ステレオ 2ch) を WAV Blob に変換
 function encodeWav(chL, chR, sampleRate) {
   const numChannels = 2;
   const length = chL.length;
@@ -175,11 +180,13 @@ function encodeWav(chL, chR, sampleRate) {
     view.setInt16(offset + 2, sR < 0 ? sR * 0x8000 : sR * 0x7fff, true);
     offset += 4;
   }
+
   return new Blob([buffer], { type: "audio/wav" });
 }
 
 worker.onmessage = (e) => {
   const { type, message, stems, sampleRate } = e.data;
+
   if (type === "progress") {
     statusEl.textContent = message;
   } else if (type === "done") {
@@ -187,11 +194,12 @@ worker.onmessage = (e) => {
       const link = document.getElementById(`dl-${k}`);
       if (link && stems[k]) {
         const blob = encodeWav(stems[k].left, stems[k].right, sampleRate);
+        stems[k] = null;
         link.href = URL.createObjectURL(blob);
         link.classList.remove("disabled");
       }
     });
-    statusEl.textContent = "完了！6パートそれぞれのWAVを保存できます。";
+    statusEl.textContent = "完了! 「歌」と「それ以外」のWAVを保存できます。";
     runBtn.disabled = false;
   } else if (type === "error") {
     statusEl.textContent = `分離エラー: ${message || "処理中にエラーが発生しました。"}`;
