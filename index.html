@@ -1,183 +1,167 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-
-scale=1.0, user-scalable=no">
- <title>『WING』-Stem Separation-</title>
- <style>
- * { box-sizing: border-box; }
- body {
- margin: 0;
- padding: 16px;
- font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
-serif;
- background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 55%, #090d16 
-100%);
- color: #f8fafc;
- min-height: 100vh;
- }
- .box {
- max-width: 480px;
- margin: 0 auto;
- }
- .app-title {
- text-align: center;
- font-size: 1.25rem;
- font-weight: 800;
- letter-spacing: 0.04em;
- margin: 4px 0 16px;
- padding: 12px 10px;
- border-radius: 14px;
- background: linear-gradient(90deg, #ec4899, #8b5cf6, #06b6d4);
- color: #ffffff;
- box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
- }
- .file-label {
- display: flex;
- flex-direction: column;
- align-items: center;
- justify-content: center;
- gap: 6px;
- width: 100%;
- min-height: 86px;
- padding: 18px 14px;
- border: 2px dashed #38bdf8;
- border-radius: 14px;
- background: rgba(56, 189, 248, 0.12);
- color: #e0f2fe;
- font-size: 1.05rem;
- font-weight: 700;
- text-align: center;
- cursor: pointer;
- transition: transform 0.12s ease, background 0.15s ease;
- }
- .file-label:active {
- transform: scale(0.98);
- background: rgba(56, 189, 248, 0.22);
- }
- .file-sub {
- font-size: 0.8rem;
- font-weight: 400;
- color: #bae6fd;
- }
- input[type="file"] {
-   display: none;
- }
- .btn {
- display: block;
- width: 100%;
- padding: 16px;
- margin-top: 12px;
- font-size: 1.05rem;
- font-weight: 800;
- border: none;
- border-radius: 12px;
- background: linear-gradient(90deg, #10b981, #06b6d4, #3b82f6);
- color: #ffffff;
- box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
- cursor: pointer;
- }
- .btn:active:not(:disabled) {
- transform: scale(0.99);
- }
- .btn:disabled {
- background: #334155;
- color: #94a3b8;
- box-shadow: none;
- cursor: not-allowed;
- }
- .status {
- margin-top: 12px;
- padding: 10px 12px;
- border-radius: 10px;
- background: rgba(15, 23, 42, 0.75);
- border: 1px solid rgba(148, 163, 184, 0.25);
- font-size: 0.9rem;
- color: #f1f5f9;
- word-break: break-all;
- }
- #results {
- margin-top: 14px;
- display: grid;
- gap: 10px;
- }
- .stem {
- padding: 12px 14px;
- border-radius: 12px;
- background: rgba(30, 41, 59, 0.85);
- border-left: 6px solid #94a3b8;
- display: flex;
- justify-content: space-between;
- align-items: center;
- }
- .stem-name {
- font-weight: 700;
- font-size: 0.95rem;
- }
- .stem-drums { border-left-color: #f97316; }
- .stem-bass { border-left-color: #eab308; }
- .stem-other { border-left-color: #a855f7; }
- .stem-vocals { border-left-color: #ec4899; }
- .stem-guitar { border-left-color: #22c55e; }
- .stem-piano { border-left-color: #06b6d4; }
- .stem a {
- color: #ffffff;
- background: linear-gradient(90deg, #6366f1, #ec4899);
- text-decoration: none;
-   font-size: 0.85rem;
- font-weight: 700;
- padding: 8px 12px;
- border-radius: 8px;
- }
- .stem a.disabled {
- opacity: 0.3;
- pointer-events: none;
- background: #475569;
- }
- #pc-block {
- display: none;
- text-align: center;
- padding-top: 50px;
- }
- </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>『WING』-Stem Separation-</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 55%, #090d16 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .box {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .app-title {
+      text-align: center;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin: 4px 0 16px;
+      padding: 12px 10px;
+      border-radius: 14px;
+      background: linear-gradient(90deg, #ec4899, #8b5cf6, #06b6d4);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+    }
+    .file-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      min-height: 86px;
+      padding: 18px 14px;
+      border: 2px dashed #38bdf8;
+      border-radius: 14px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #e0f2fe;
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+    .file-label:active {
+      transform: scale(0.98);
+      background: rgba(56, 189, 248, 0.22);
+    }
+    .file-sub {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #bae6fd;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      margin-top: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(90deg, #10b981, #06b6d4, #3b82f6);
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+      cursor: pointer;
+    }
+    .btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+    .btn:disabled {
+      background: #334155;
+      color: #94a3b8;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      font-size: 0.9rem;
+      color: #f1f5f9;
+      word-break: break-all;
+    }
+    #results {
+      margin-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .stem {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.85);
+      border-left: 6px solid #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stem-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .stem-drums { border-left-color: #f97316; }
+    .stem-bass { border-left-color: #eab308; }
+    .stem-other { border-left-color: #a855f7; }
+    .stem-vocals { border-left-color: #ec4899; }
+    .stem-guitar { border-left-color: #22c55e; }
+    .stem-piano { border-left-color: #06b6d4; }
+    .stem a {
+      color: #ffffff;
+      background: linear-gradient(90deg, #6366f1, #ec4899);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    .stem a.disabled {
+      opacity: 0.3;
+      pointer-events: none;
+      background: #475569;
+    }
+    #pc-block {
+      display: none;
+      text-align: center;
+      padding-top: 50px;
+    }
+  </style>
 </head>
 <body>
- <div id="pc-block">
- <h2>スマートフォン専用です</h2>
- <p>このページはスマートフォンからのみご利用いただけます。</p>
- </div>
- <div class="box" id="app">
- <header class="app-title">【WING】-Stem Separation-</header>
- <label for="audioFile" class="file-label" id="fileLabel">
- <span> 🎵 音源ファイルを選択（タップ）</span>
- <span class="file-sub" id="fileSub">対応形式：MP3 / WAV（44100Hz・ステレオ）
-</span>
- </label>
- <input type="file" id="audioFile" accept=".mp3,.wav,audio/mpeg,audio/wav">
- <button id="runBtn" class="btn" disabled>6 パート分離を実行</button>
- <div id="status" class="status">MP3 または WAV ファイルを選択してください。</div>
- <div id="results">
- <div class="stem stem-drums"><span class="stem-name"> ① ドラム 
-(Drums)</span><a id="dl-drums" class="disabled" download="drums.wav">WAV 保
-存</a></div>
- <div class="stem stem-bass"><span class="stem-name"> ② ベース 
-(Bass)</span><a id="dl-bass" class="disabled" download="bass.wav">WAV 保
-存</a></div>
- <div class="stem stem-other"><span class="stem-name"> ③ その他 
-(Other)</span><a id="dl-other" class="disabled" download="other.wav">WAV 保
-存</a></div>
- <div class="stem stem-vocals"><span class="stem-name"> ④ ボーカル 
-(Vocals)</span><a id="dl-vocals" class="disabled" download="vocals.wav">WAV 保存<
-/a></div>
- <div class="stem stem-guitar"><span class="stem-name"> ⑤ ギター 
-(Guitar)</span><a id="dl-guitar" class="disabled" download="guitar.wav">WAV 保存<
-/a></div>
- <div class="stem stem-piano"><span class="stem-name"> ⑥ ピアノ 
-(Piano)</span><a id="dl-piano" class="disabled" download="piano.wav">WAV 保
-存</a></div>
- </div>
- </div>
- <script src="app.js"></script>
+  <div id="pc-block">
+    <h2>スマートフォン専用です</h2>
+    <p>このページはスマートフォンからのみご利用いただけます。</p>
+  </div>
+  <div class="box" id="app">
+    <header class="app-title">【WING】-Stem Separation-</header>
+    <label for="audioFile" class="file-label" id="fileLabel">
+      <span>🎵 音源ファイルを選択（タップ）</span>
+      <span class="file-sub" id="fileSub">対応形式：MP3 / WAV（44100Hz・ステレオ）</span>
+    </label>
+    <input type="file" id="audioFile" accept=".mp3,.wav,audio/mpeg,audio/wav">
+    <button id="runBtn" class="btn" disabled>6 パート分離を実行</button>
+    <div id="status" class="status">MP3 または WAV ファイルを選択してください。</div>
+    <div id="results">
+      <div class="stem stem-drums"><span class="stem-name">① ドラム (Drums)</span><a id="dl-drums" class="disabled" download="drums.wav">WAV 保存</a></div>
+      <div class="stem stem-bass"><span class="stem-name">② ベース (Bass)</span><a id="dl-bass" class="disabled" download="bass.wav">WAV 保存</a></div>
+      <div class="stem stem-other"><span class="stem-name">③ その他 (Other)</span><a id="dl-other" class="disabled" download="other.wav">WAV 保存</a></div>
+      <div class="stem stem-vocals"><span class="stem-name">④ ボーカル (Vocals)</span><a id="dl-vocals" class="disabled" download="vocals.wav">WAV 保存</a></div>
+      <div class="stem stem-guitar"><span class="stem-name">⑤ ギター (Guitar)</span><a id="dl-guitar" class="disabled" download="guitar.wav">WAV 保存</a></div>
+      <div class="stem stem-piano"><span class="stem-name">⑥ ピアノ (Piano)</span><a id="dl-piano" class="disabled" download="piano.wav">WAV 保存</a></div>
+    </div>
+  </div>
+  <script src="app.js"></script>
 </body>
-  </html>
+</html>
