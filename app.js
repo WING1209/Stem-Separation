@@ -25,15 +25,59 @@ function isAllowedAudio(file) {
   return nameOk || typeOk;
 }
 
-// ダウンロードリンクを初期状態（無効）に戻す
+// ダウンロードリンクを初期状態（無効）に戻し、既存の ObjectURL を解放
 function resetDownloadLinks() {
   STEM_KEYS.forEach((k) => {
     const link = document.getElementById(`dl-${k}`);
     if (link) {
+      if (link.href && link.href.startsWith("blob:")) {
+        URL.revokeObjectURL(link.href);
+      }
       link.classList.add("disabled");
       link.removeAttribute("href");
     }
   });
+}
+
+// 任意のデコード済み AudioBuffer を 44100Hz・2ch（ステレオ）へ自動変換
+async function normalizeTo44100Stereo(decodedBuffer) {
+  const numChannels = decodedBuffer.numberOfChannels;
+  if (numChannels < 1) {
+    throw new Error("有効な音声チャンネルが見つかりませんでした。");
+  }
+
+  const needsResample = decodedBuffer.sampleRate !== TARGET_SAMPLE_RATE;
+  const needsChannelConvert = numChannels !== 2;
+
+  // すでに 44100Hz・2ch の場合はそのまま返す
+  if (!needsResample && !needsChannelConvert) {
+    return decodedBuffer;
+  }
+
+  const targetLength = Math.ceil(decodedBuffer.duration * TARGET_SAMPLE_RATE);
+  const offlineCtx = new OfflineAudioContext(2, targetLength, TARGET_SAMPLE_RATE);
+
+  const inputForRender = offlineCtx.createBuffer(
+    Math.min(numChannels, 2),
+    decodedBuffer.length,
+    decodedBuffer.sampleRate
+  );
+
+  if (numChannels === 1) {
+    const mono = decodedBuffer.getChannelData(0);
+    inputForRender.copyToChannel(mono, 0);
+    inputForRender.copyToChannel(mono, 1);
+  } else {
+    inputForRender.copyToChannel(decodedBuffer.getChannelData(0), 0);
+    inputForRender.copyToChannel(decodedBuffer.getChannelData(1), 1);
+  }
+
+  const source = offlineCtx.createBufferSource();
+  source.buffer = inputForRender;
+  source.connect(offlineCtx.destination);
+  source.start(0);
+
+  return await offlineCtx.startRendering();
 }
 
 fileInput.addEventListener("change", (e) => {
@@ -43,7 +87,7 @@ fileInput.addEventListener("change", (e) => {
   if (!isAllowedAudio(file)) {
     selectedFile = null;
     runBtn.disabled = true;
-    fileSub.textContent = "対応形式：MP3 / WAV（44100Hz・ステレオ）";
+    fileSub.textContent = "対応形式：MP3 / WAV（44100Hz・ステレオへ自動変換）";
     statusEl.textContent = "エラー: MP3またはWAVファイルのみ対応しています。";
     return;
   }
@@ -64,31 +108,36 @@ runBtn.addEventListener("click", async () => {
   try {
     const arrayBuffer = await selectedFile.arrayBuffer();
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    if (audioBuffer.sampleRate !== TARGET_SAMPLE_RATE) {
-      statusEl.textContent = "サンプリングレートがちがいます";
-      runBtn.disabled = false;
-      return;
+    let audioBuffer;
+    try {
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } finally {
+      if (typeof audioCtx.close === "function") {
+        await audioCtx.close().catch(() => {});
+      }
     }
 
-    if (audioBuffer.numberOfChannels < 2) {
-      statusEl.textContent = "エラー: ステレオ（2ch）音源のみ対応しています。";
-      runBtn.disabled = false;
-      return;
+    const needsConvert = audioBuffer.sampleRate !== TARGET_SAMPLE_RATE || audioBuffer.numberOfChannels !== 2;
+    if (needsConvert) {
+      statusEl.textContent = `44100Hz・ステレオに変換中...（元: ${audioBuffer.sampleRate}Hz / ${audioBuffer.numberOfChannels}ch）`;
     }
 
-    const left = audioBuffer.getChannelData(0);
-    const right = audioBuffer.getChannelData(1);
+    const normalizedBuffer = await normalizeTo44100Stereo(audioBuffer);
+    const left = normalizedBuffer.getChannelData(0);
+    const right = normalizedBuffer.getChannelData(1);
 
     statusEl.textContent = "バックグラウンドで6パート分離中...";
-    worker.postMessage({
-      sampleRate: audioBuffer.sampleRate,
-      left,
-      right
-    }, [left.buffer, right.buffer]);
+    worker.postMessage(
+      {
+        sampleRate: normalizedBuffer.sampleRate,
+        left,
+        right
+      },
+      [left.buffer, right.buffer]
+    );
   } catch (err) {
-    statusEl.textContent = `読み込みエラー: ${err.message}`;
+    statusEl.textContent = `読み込み・変換エラー: ${err.message}`;
     runBtn.disabled = false;
   }
 });
@@ -144,5 +193,13 @@ worker.onmessage = (e) => {
     });
     statusEl.textContent = "完了！6パートそれぞれのWAVを保存できます。";
     runBtn.disabled = false;
+  } else if (type === "error") {
+    statusEl.textContent = `分離エラー: ${message || "処理中にエラーが発生しました。"}`;
+    runBtn.disabled = false;
   }
+};
+
+worker.onerror = (err) => {
+  statusEl.textContent = `ワーカーエラー: ${err.message || "予期しないエラーが発生しました。"}`;
+  runBtn.disabled = false;
 };
