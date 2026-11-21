@@ -1,19 +1,14 @@
 import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.mjs";
 
-// 通常モデル (約304MB) と 量子化モデル (用意できた場合はこちらにURLを設定)
 const MODEL_URL_FP32 = "https://huggingface.co/jackjiangxinfa/demucs-onnx/resolve/main/model.onnx";
-const MODEL_URL_INT8 = ""; // 例: "https://huggingface.co/あなたのアカウント/リポジトリ/resolve/main/model_int8.onnx"
+const MODEL_URL_INT8 = "";
 const MODEL_URL = MODEL_URL_INT8 || MODEL_URL_FP32;
 
-// モデルが要求する入力サンプル数 (343980)
 const CHUNK_SIZE = 343980;
 const INPUT_NAME = "input";
 const OUTPUT_NAME = "output";
-
-// 6 パートの並び順 (drums, bass, other, vocals, guitar, piano)
 const STEM_KEYS = ["drums", "bass", "other", "vocals", "guitar", "piano"];
 
-// iOS のメモリ制限対策: スレッド数とメモリ事前確保を抑制
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.proxy = false;
 
@@ -21,15 +16,19 @@ let session = null;
 
 async function initModel() {
   if (session) return session;
-  const label = MODEL_URL_INT8 ? "量子化AIモデル" : "AI モデル (約304MB)";
-  postMessage({ type: "progress", message: `${label} を読み込み中...` });
+  postMessage({ type: "progress", message: "Worker: モデルfetch開始..." });
 
   const response = await fetch(MODEL_URL);
   if (!response.ok) {
     throw new Error(`モデルの取得に失敗しました (HTTP ${response.status})`);
   }
+  postMessage({ type: "progress", message: "Worker: fetch応答OK、ArrayBuffer取得中..." });
 
   let modelBuffer = await response.arrayBuffer();
+  postMessage({
+    type: "progress",
+    message: `Worker: モデルDL完了 (${(modelBuffer.byteLength / 1024 / 1024).toFixed(1)} MB) -> セッション生成中...`
+  });
 
   try {
     session = await ort.InferenceSession.create(modelBuffer, {
@@ -37,6 +36,7 @@ async function initModel() {
       enableCpuMemArena: false,
       enableMemPattern: false
     });
+    postMessage({ type: "progress", message: "Worker: AIセッション生成完了!" });
   } finally {
     modelBuffer = null;
   }
