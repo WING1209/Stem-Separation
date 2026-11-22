@@ -1,167 +1,223 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>『WING』-Stem Separation-</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6パート音源分離アプリ</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
+    :root {
+      --bg-color: #181a20;
+      --card-bg: #2b303c;
+      --card-hover: #353b4a;
+      --text-main: #f3f4f6;
+      --text-sub: #9ca3af;
+      --accent: #38bdf8;
+      --btn-primary: #3b4252;
+      --btn-primary-active: #0284c7;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 55%, #090d16 100%);
-      color: #f8fafc;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
       min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
     }
-    .box {
-      max-width: 480px;
-      margin: 0 auto;
+
+    #app {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
-    .app-title {
-      text-align: center;
+
+    h1 {
       font-size: 1.25rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      margin: 4px 0 16px;
-      padding: 12px 10px;
-      border-radius: 14px;
-      background: linear-gradient(90deg, #ec4899, #8b5cf6, #06b6d4);
-      color: #ffffff;
-      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+      text-align: center;
+      margin-bottom: 4px;
+      font-weight: 700;
     }
-    .file-label {
+
+    /* ファイルドロップ / 選択エリア */
+    .upload-box {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      width: 100%;
-      min-height: 86px;
-      padding: 18px 14px;
-      border: 2px dashed #38bdf8;
-      border-radius: 14px;
-      background: rgba(56, 189, 248, 0.12);
-      color: #e0f2fe;
-      font-size: 1.05rem;
-      font-weight: 700;
       text-align: center;
+      padding: 28px 16px;
+      border: 2px dashed var(--accent);
+      border-radius: 12px;
+      background-color: rgba(56, 189, 248, 0.08);
       cursor: pointer;
-      transition: transform 0.12s ease, background 0.15s ease;
+      transition: background-color 0.2s, transform 0.1s;
     }
-    .file-label:active {
-      transform: scale(0.98);
-      background: rgba(56, 189, 248, 0.22);
+
+    .upload-box:hover,
+    .upload-box.dragover {
+      background-color: rgba(56, 189, 248, 0.18);
     }
-    .file-sub {
-      font-size: 0.8rem;
-      font-weight: 400;
-      color: #bae6fd;
+
+    .upload-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
     }
+
+    .upload-sub {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      word-break: break-all;
+    }
+
     input[type="file"] {
       display: none;
     }
-    .btn {
-      display: block;
+
+    /* 実行ボタン */
+    #runBtn {
       width: 100%;
-      padding: 16px;
-      margin-top: 12px;
-      font-size: 1.05rem;
-      font-weight: 800;
-      border: none;
-      border-radius: 12px;
-      background: linear-gradient(90deg, #10b981, #06b6d4, #3b82f6);
+      padding: 15px;
+      font-size: 1rem;
+      font-weight: 700;
       color: #ffffff;
-      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+      background-color: var(--btn-primary-active);
+      border: none;
+      border-radius: 10px;
       cursor: pointer;
+      transition: opacity 0.2s, background-color 0.2s;
     }
-    .btn:active:not(:disabled) {
-      transform: scale(0.99);
+
+    #runBtn:hover:not(:disabled) {
+      opacity: 0.9;
     }
-    .btn:disabled {
-      background: #334155;
-      color: #94a3b8;
-      box-shadow: none;
+
+    #runBtn:disabled {
+      background-color: var(--btn-primary);
+      color: var(--text-sub);
       cursor: not-allowed;
     }
-    .status {
-      margin-top: 12px;
-      padding: 10px 12px;
+
+    /* ステータスバー */
+    #status {
+      background-color: var(--card-bg);
+      padding: 12px 16px;
       border-radius: 10px;
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      font-size: 0.9rem;
-      color: #f1f5f9;
-      word-break: break-all;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      line-height: 1.4;
     }
-    #results {
-      margin-top: 14px;
-      display: grid;
+
+    /* 6パート出力リスト */
+    .stem-list {
+      display: flex;
+      flex-direction: column;
       gap: 10px;
     }
-    .stem {
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: rgba(30, 41, 59, 0.85);
-      border-left: 6px solid #94a3b8;
+
+    .stem-item {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      background-color: var(--card-bg);
+      padding: 12px 16px;
+      border-radius: 10px;
+      border-left: 6px solid #64748b;
     }
-    .stem-name {
-      font-weight: 700;
+
+    .stem-item.drums  { border-left-color: #f97316; }
+    .stem-item.bass   { border-left-color: #eab308; }
+    .stem-item.other  { border-left-color: #a855f7; }
+    .stem-item.vocals { border-left-color: #ec4899; }
+    .stem-item.guitar { border-left-color: #22c55e; }
+    .stem-item.piano  { border-left-color: #06b6d4; }
+
+    .stem-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
       font-size: 0.95rem;
     }
-    .stem-drums { border-left-color: #f97316; }
-    .stem-bass { border-left-color: #eab308; }
-    .stem-other { border-left-color: #a855f7; }
-    .stem-vocals { border-left-color: #ec4899; }
-    .stem-guitar { border-left-color: #22c55e; }
-    .stem-piano { border-left-color: #06b6d4; }
-    .stem a {
-      color: #ffffff;
-      background: linear-gradient(90deg, #6366f1, #ec4899);
-      text-decoration: none;
-      font-size: 0.85rem;
+
+    .stem-num {
+      font-size: 1.05rem;
+      opacity: 0.9;
+    }
+
+    .dl-btn {
+      padding: 7px 14px;
+      font-size: 0.82rem;
       font-weight: 700;
-      padding: 8px 12px;
-      border-radius: 8px;
+      color: #ffffff;
+      background-color: #0284c7;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background-color 0.2s, opacity 0.2s;
     }
-    .stem a.disabled {
-      opacity: 0.3;
+
+    .dl-btn:hover:not(.disabled) {
+      background-color: #0369a1;
+    }
+
+    .dl-btn.disabled {
+      background-color: #3f4654;
+      color: #7c8596;
       pointer-events: none;
-      background: #475569;
-    }
-    #pc-block {
-      display: none;
-      text-align: center;
-      padding-top: 50px;
     }
   </style>
 </head>
 <body>
-  <div id="pc-block">
-    <h2>スマートフォン専用です</h2>
-    <p>このページはスマートフォンからのみご利用いただけます。</p>
-  </div>
-  <div class="box" id="app">
-    <header class="app-title">【WING】-Stem Separation-</header>
-    <label for="audioFile" class="file-label" id="fileLabel">
-      <span>🎵 音源ファイルを選択（タップ）</span>
-      <span class="file-sub" id="fileSub">対応形式：MP3 / WAV（44100Hz・ステレオ）</span>
+  <div id="app">
+    <h1>6パート音源分離 (Demucs)</h1>
+
+    <label class="upload-box" id="dropZone" for="audioFile">
+      <div class="upload-title">音声ファイルを選択 / ドロップ</div>
+      <div class="upload-sub" id="fileSub">対応形式: MP3 / WAV (44100Hz・ステレオへ自動変換)</div>
+      <input type="file" id="audioFile" accept=".mp3,.wav,audio/mpeg,audio/wav" />
     </label>
-    <input type="file" id="audioFile" accept=".mp3,.wav,audio/mpeg,audio/wav">
-    <button id="runBtn" class="btn" disabled>6 パート分離を実行</button>
-    <div id="status" class="status">MP3 または WAV ファイルを選択してください。</div>
-    <div id="results">
-      <div class="stem stem-drums"><span class="stem-name">① ドラム (Drums)</span><a id="dl-drums" class="disabled" download="drums.wav">WAV 保存</a></div>
-      <div class="stem stem-bass"><span class="stem-name">② ベース (Bass)</span><a id="dl-bass" class="disabled" download="bass.wav">WAV 保存</a></div>
-      <div class="stem stem-other"><span class="stem-name">③ その他 (Other)</span><a id="dl-other" class="disabled" download="other.wav">WAV 保存</a></div>
-      <div class="stem stem-vocals"><span class="stem-name">④ ボーカル (Vocals)</span><a id="dl-vocals" class="disabled" download="vocals.wav">WAV 保存</a></div>
-      <div class="stem stem-guitar"><span class="stem-name">⑤ ギター (Guitar)</span><a id="dl-guitar" class="disabled" download="guitar.wav">WAV 保存</a></div>
-      <div class="stem stem-piano"><span class="stem-name">⑥ ピアノ (Piano)</span><a id="dl-piano" class="disabled" download="piano.wav">WAV 保存</a></div>
+
+    <button id="runBtn" disabled>6 パート分離を実行</button>
+
+    <div id="status">MP3 または WAV ファイルを選択してください。</div>
+
+    <div class="stem-list">
+      <div class="stem-item drums">
+        <div class="stem-info"><span class="stem-num">①</span> ドラム (Drums)</div>
+        <a id="dl-drums" class="dl-btn disabled">WAV 保存</a>
+      </div>
+      <div class="stem-item bass">
+        <div class="stem-info"><span class="stem-num">②</span> ベース (Bass)</div>
+        <a id="dl-bass" class="dl-btn disabled">WAV 保存</a>
+      </div>
+      <div class="stem-item other">
+        <div class="stem-info"><span class="stem-num">③</span> その他 (Other)</div>
+        <a id="dl-other" class="dl-btn disabled">WAV 保存</a>
+      </div>
+      <div class="stem-item vocals">
+        <div class="stem-info"><span class="stem-num">④</span> ボーカル (Vocals)</div>
+        <a id="dl-vocals" class="dl-btn disabled">WAV 保存</a>
+      </div>
+      <div class="stem-item guitar">
+        <div class="stem-info"><span class="stem-num">⑤</span> ギター (Guitar)</div>
+        <a id="dl-guitar" class="dl-btn disabled">WAV 保存</a>
+      </div>
+      <div class="stem-item piano">
+        <div class="stem-info"><span class="stem-num">⑥</span> ピアノ (Piano)</div>
+        <a id="dl-piano" class="dl-btn disabled">WAV 保存</a>
+      </div>
     </div>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
